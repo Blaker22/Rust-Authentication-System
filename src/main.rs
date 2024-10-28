@@ -7,9 +7,8 @@ use hex;
 use std::process::Command;
 use regex::Regex;
 
-
+// Clear Screen
 fn cls() {
-    // Determine the operating system and execute the appropriate command
     if cfg!(target_os = "windows") {
         Command::new("cmd")
             .args(&["/C", "cls"])
@@ -22,6 +21,7 @@ fn cls() {
     }
 }
 
+// Register function
 fn register(conn: &mut PooledConn) -> Result<()> {
     let mut username = String::new();
     let mut password = String::new();
@@ -30,12 +30,14 @@ fn register(conn: &mut PooledConn) -> Result<()> {
     io::stdout().flush().expect("Failed to flush stdout"); 
     io::stdin().read_line(&mut username).expect("Failed to read line");
 
+    // Check if username length is longer than 15 characters
     let username = username.trim();
     if username.len() > 15 {
         println!("Username '{}' is too long. Maximum length is 15 characters.", username);
-        return Ok(()); // Return to the main function
+        return Ok(()); 
     }
 
+    // Check if username existed or not
     let exists: Option<u32> = conn.exec_first(
         "SELECT COUNT(*) FROM users WHERE username = ?",
         (username,)
@@ -44,7 +46,7 @@ fn register(conn: &mut PooledConn) -> Result<()> {
     if let Some(count) = exists {
         if count > 0 {
             println!("Username '{}' already exists.", username);
-            return Ok(()); // Return to the main function
+            return Ok(()); 
         }
     }
 
@@ -52,19 +54,20 @@ fn register(conn: &mut PooledConn) -> Result<()> {
     io::stdout().flush().expect("Failed to flush stdout"); 
     io::stdin().read_line(&mut password).expect("Failed to read line");
 
+    // Check the password requirement of a minimum of 8 characters with a minimum of one letter, number, and symbol.
     let password = password.trim();
     if password.len() < 8 {
         println!("Password dont't meet the requirement of 8 characters with letters, numbers, and symbols");
-        return Ok(()); // Return to the main function
+        return Ok(());
     }
 
     let letter_regex = Regex::new(r"[a-zA-Z]").unwrap();
     let number_regex = Regex::new(r"[0-9]").unwrap();
-    let symbol_regex = Regex::new(r"[!@#$%^&*(),.?\:{}|<>]").unwrap(); // Customize symbols as needed
+    let symbol_regex = Regex::new(r"[!@#$%^&*(),.?\:{}|<>]").unwrap(); 
 
     if !letter_regex.is_match(password) || !number_regex.is_match(password) || !symbol_regex.is_match(password) {
         println!("Password must contain at least one letter, one number, and one symbol.");
-        return Ok(()); // Return to the main function
+        return Ok(()); 
     }
 
     let salt: [u8; 16] = rand::thread_rng().gen();
@@ -90,6 +93,7 @@ fn register(conn: &mut PooledConn) -> Result<()> {
     Ok(())
 }
 
+// Authentication functions
 fn check(conn: &mut PooledConn) -> Result<()> {
     let mut username = String::new();
     let mut password = String::new();
@@ -113,7 +117,6 @@ fn check(conn: &mut PooledConn) -> Result<()> {
     )?;
 
     if let Some((stored_hashed_password, stored_salt)) = result {
-        // Decode the stored salt from hex
         let salt_bytes = hex::decode(&stored_salt).expect("Failed to decode salt from hex");
 
         let mut hasher = Sha256::new();
